@@ -20,6 +20,7 @@ playlist_page <- function(){
     fluidRow(align = "center",
              h4("Track list")
     ),
+    uiOutput("genre_selection"),
     DT::DTOutput("table_playlist"),
     fluidRow(align = 'center',
              htmlOutput("track_name"),

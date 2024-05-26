@@ -3,7 +3,7 @@ library('DT')
 library('tibble')
 library('spotifyr')
 library('fmsb')
-
+library('ggplot2')
 
 get_artists_from_playlist <- function(playlist){
   artists = data.frame(name=character(0))
@@ -38,7 +38,21 @@ get_tracks_info_from_playlist <- function(playlist){
     valence = c(valence, audio_features$valence)
     tempo = c(tempo, audio_features$tempo)
   }
-  tracks_info = data.frame(Name = playlist$track.name, Album_name = playlist$track.album.name, img_url = img_urls, preview_url = playlist$track.preview_url, popularity = playlist$track.popularity, danceability = danceability, energy = energy, acousticness = acousticness, liveness = liveness, valence = valence, tempo = tempo, duration_ms = playlist$track.duration_ms)
+  
+  genres = c()
+  for(artists in playlist$track.artists){
+    artist_id = artists$id[1]
+    artist = get_artist(artist_id)
+    if(length(artist$genres) < 1){
+      genres = c(genres, "Not specified")
+    }
+    else{
+      genres = c(genres, artist$genres[[1]])
+    }
+  }
+  
+  
+  tracks_info = data.frame(Name = playlist$track.name, Album_name = playlist$track.album.name, genre = genres, img_url = img_urls, preview_url = playlist$track.preview_url, popularity = playlist$track.popularity, danceability = danceability, energy = energy, acousticness = acousticness, liveness = liveness, valence = valence, tempo = tempo, duration_ms = playlist$track.duration_ms)
   return(tracks_info)
 }
 
@@ -51,18 +65,45 @@ generate_audio_features_plot <- function(danceability, energy, acousticness, liv
              )
 }
 
+generate_genre_pie_chart <- function(tracks_info){
+  genres_info = tracks_info %>% select(genre) %>% group_by(genre) %>% summarise(nr_of_occ = n())
+  genres_info = arrange(genres_info, nr_of_occ)
+  print(genres_info)
+  ggplot(tail(genres_info,5), aes(x="", y=nr_of_occ, fill=genre)) +
+    geom_bar(stat="identity", width=1) +
+    coord_polar("y", start=0)
+}
+
 server <- function(input, output) {
   tracks_info = data.frame()
   # Displaying playlist info in the form of DTable
   observeEvent(input$submit_playlist, {
     tracks_info <<- get_tracks_info_from_playlist(get_playlist_tracks(playlist_id = input$playlist_id))
-    output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name")], rownames = FALSE, selection = 'single')
+    output$genre_selection <- renderUI({
+      selectInput("genre_selection", "Select genre", c("All genres", unique(tracks_info$genre)), selected = "All genres")
+    })
+    output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name", "genre")], rownames = FALSE, selection = 'single')    
+    output$genre_pie_chart = renderPlot(generate_genre_pie_chart(tracks_info))
     output$average_audio_features_plot = renderPlot(generate_audio_features_plot(mean(as.numeric(tracks_info$danceability)), mean(as.numeric(tracks_info$energy)), mean(as.numeric(tracks_info$acousticness)), mean(as.numeric(tracks_info$liveness)), mean(as.numeric(tracks_info$valence))))
   })
   
+  # Change diplayed tracks by genre
+  observeEvent(input$genre_selection,{
+    if(input$genre_selection == "All genres"){
+      output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name", "genre")], rownames = FALSE, selection = 'single')
+    } else{
+      output$table_playlist = DT::renderDT(tracks_info %>% dplyr::filter(genre == input$genre_selection) %>% select("Name", "Album_name", "genre"),  rownames = FALSE, selection = 'single')
+    }
+  })
+
   # Displaing the selected track info
   observeEvent(input$table_playlist_rows_selected, {
-    selected_track <- tracks_info[input$table_playlist_rows_selected, ]
+    if(input$genre_selection == "All genres"){
+      selected_track <- tracks_info[input$table_playlist_rows_selected, ]
+    } else{
+      filtered_tracks <- tracks_info %>% dplyr::filter(genre == input$genre_selection)
+      selected_track <- filtered_tracks[input$table_playlist_rows_selected, ]
+    }    
     output$track_name = renderText(paste('<h4 style="font-weight: bold">',selected_track$Name,"</h4>"))
     output$track_img = renderText({c('<img src="', selected_track$img_url,'" style="width: 300px; height: 300px;"/>')})
     output$audio_features_plot = renderPlot(generate_audio_features_plot(selected_track$danceability, selected_track$energy, selected_track$acousticness, selected_track$liveness, selected_track$valence))
@@ -70,3 +111,5 @@ server <- function(input, output) {
     })
 
 }
+
+
