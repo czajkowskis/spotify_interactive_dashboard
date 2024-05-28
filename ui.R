@@ -1,4 +1,5 @@
 library('DT')
+library('plotly')
 
 playlist_page <- function(){
   fluidPage(  
@@ -32,20 +33,37 @@ playlist_page <- function(){
              plotOutput("audio_features_plot")
              ),
       column(4,
-             plotOutput("track_popularity_vs_average_plot")
+             plotOutput("track_popularity_vs_average_plot"),
+             
       ),
     )
     
   )
 }
+
+artist_page <- function(){
+  fluidPage(
+    fluidRow(align = "center",
+             h2("Artist analyser"),
+             textInput('artist_id', label = "Artist id:", value = '1yq2JzsqbzFbJ1B7wGOXLc'),
+             textInput('artist_name', label = "Artist name:", value = 'Young Igi'),
+             
+             actionButton("submit_artist", "Submit")
+    ),
+    fluidRow(align="center",
+              htmlOutput("artist_name"),
+              htmlOutput("artist_img"),
+    ),
+    fluidRow(align = "center",
+             plotlyOutput("tracks_scatter_plot")
+    ),
+  )
+}
+
 ui <- fluidPage(
   tabsetPanel(
     tabPanel("Playlist", playlist_page()),
-    tabPanel("Artist", 
-             h2("Artist analyser"),
-             textInput('artist_id', label = "Artist id:", value = '0iBTVnJ1Sff92zCDujfvyJ'),
-             actionButton("submit_artist", "Submit")
-    ),
+    tabPanel("Artist", artist_page()),
     tabPanel("Song")
   )
 )

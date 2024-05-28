@@ -4,6 +4,7 @@ library('tibble')
 library('spotifyr')
 library('fmsb')
 library('ggplot2')
+library('plotly')
 
 get_artists_from_playlist <- function(playlist){
   artists = data.frame(name=character(0))
@@ -74,8 +75,26 @@ generate_genre_pie_chart <- function(tracks_info){
     coord_polar("y", start=0)
 }
 
+get_artist_information <- function(artist_id){
+  artist = get_artist(artist_id)
+  artist_info = data.frame(name = artist$name, followers = artist$followers$total, popularity = artist$popularity, img_url = artist$images$url[1])
+  return(artist_info)
+}
+
+
+generate_audio_scatter_plot <- function(audio_features, x_axis_feature, y_axis_feature){
+plot_ly(data = audio_features, 
+        type = "scatter", 
+        mode = "markers", 
+        x = ~valence, 
+        y = ~energy, 
+        color = ~album_name,
+        text = ~track_name)
+}
+
 server <- function(input, output) {
   tracks_info = data.frame()
+  artist_info = data.frame()
   # Displaying playlist info in the form of DTable
   observeEvent(input$submit_playlist, {
     tracks_info <<- get_tracks_info_from_playlist(get_playlist_tracks(playlist_id = input$playlist_id))
@@ -109,7 +128,22 @@ server <- function(input, output) {
     output$audio_features_plot = renderPlot(generate_audio_features_plot(selected_track$danceability, selected_track$energy, selected_track$acousticness, selected_track$liveness, selected_track$valence))
     output$track_preview = renderText(paste0('<audio src="', selected_track$preview_url,'"controls> </audio>'))
     })
-
+  
+  observeEvent(input$submit_artist,{
+    artist_info <<- get_artist_information(input$artist_id)
+    print(input$artist_id)
+    print(input$artist_name)
+    audio_features = get_artist_audio_features(as.character(input$artist_name))
+    output$artist_name = renderText({c('<h3 style="font-weight: bold">', artist_info$name, '</h3>')})
+    output$artist_img = renderText({c('<img src="',artist_info$img_url,'" style="width: 300px; height: 300px;"/>')})
+    print(audio_features)
+    output$tracks_scatter_plot = renderPlotly(generate_audio_scatter_plot(audio_features, "valence", "energy"))
+  })
+  
 }
+
+#artist_info <- get_artist("7CJgLPEqiIRuneZSolpawQ?")
+#audio_features = get_artist_audio_features("Young Igi")
+
 
 
