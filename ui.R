@@ -19,8 +19,6 @@ playlist_page <- function(){
       ),
       fluidRow(
         column(6, align = "left",
-               #h4("Track list"),
-               #uiOutput("genre_selection"),
                DT::DTOutput("table_playlist")
         ),
         column(6, align = "left",
@@ -29,18 +27,19 @@ playlist_page <- function(){
                         h3("Track details"),
                         htmlOutput("track_img"),
                         htmlOutput("track_preview"),
+                        htmlOutput("author"),
                         htmlOutput("track_name"),
                         htmlOutput('album'),
                         htmlOutput('length'),
                  ),
                  column(6,
-                        h3("About the artist"),
-                        #plotOutput("audio_features_plot"),
-                        #htmlOutput('author'),
-                        #htmlOutput('d'),
-                        #htmlOutput('e'),
-                        #htmlOutput('l'),
-                        #htmlOutput('v')
+                        h3("Song parameters"),
+                        plotOutput("audio_features_plot", height = "300px"),
+                        htmlOutput('a'),
+                        htmlOutput('d'),
+                        htmlOutput('e'),
+                        htmlOutput('l'),
+                        htmlOutput('v')
                  )
                )
               )
@@ -49,7 +48,6 @@ playlist_page <- function(){
     
     fluidRow(
       column(6,
-             #plotOutput("audio_features_plot")
              ),
       column(4,
              #plotOutput("track_popularity_vs_average_plot"),
@@ -60,11 +58,11 @@ playlist_page <- function(){
              h4("Playlist statistics")
     ),
     fluidRow(align = "center",
-             column(6, 
-                    #plotOutput("genre_pie_chart")
+             column(3, 
+                    plotlyOutput("genre_pie_chart", height = "300px")
              ),
-             column(6,
-                    #plotOutput("average_audio_features_plot")
+             column(3,
+                    plotOutput("average_audio_features_plot", height = "300px")
              )
     )
   )
