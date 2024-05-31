@@ -58,13 +58,24 @@ playlist_page <- function(){
              h4("Playlist statistics")
     ),
     fluidRow(align = "center",
-             column(3, 
-                    plotlyOutput("genre_pie_chart", height = "300px")
+             column(4, 
+                    plotlyOutput("genre_pie_chart", height = "300px"),
+                    plotlyOutput("box", height = "300px")
              ),
-             column(3,
+             column(4,
                     plotOutput("average_audio_features_plot", height = "300px")
-             )
-    )
+             ),
+             column(4,
+                    plotlyOutput("duration_violin", height = "300px")
+                    )
+             
+    ),
+  fluidRow(align = "left",
+           htmlOutput("descr"),
+           htmlOutput("nr_of_songs"),
+           htmlOutput("author_of_pl"),
+           htmlOutput("type_of_pl")
+  )
   )
 }
 

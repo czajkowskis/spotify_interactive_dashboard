@@ -40,6 +40,9 @@ get_tracks_info_from_playlist <- function(playlist){
   tempo  = c()
   popularity = c()
   tracks_ids = c()
+  inst = c()
+  loudness = c()
+  speech = c()
 
   for(track_id in playlist$track.id){
     tracks_ids = c(tracks_ids, track_id)
@@ -50,6 +53,9 @@ get_tracks_info_from_playlist <- function(playlist){
     liveness = c(liveness, audio_features$liveness)
     valence = c(valence, audio_features$valence)
     tempo = c(tempo, audio_features$tempo)
+    #inst = c(inst, audio_features$instrumentalness)
+    loudness = c(loudness, audio_features$loudness)
+    #speech = c(energy, audio_features$energy)
   }
   
   genres = c()
@@ -84,7 +90,8 @@ get_tracks_info_from_playlist <- function(playlist){
                            valence = valence, 
                            tempo = tempo,
                            duration_ms = playlist$track.duration_ms,
-                           track_id = tracks_ids)
+                           track_id = tracks_ids,
+                           loudn = loudness)
   return(tracks_info)
 }
 
@@ -95,7 +102,7 @@ generate_audio_features_plot <- function(danceability, energy, acousticness, liv
                               Acousticness = acousticness, 
                               Liveness = liveness, 
                               Valence = valence)
-  par(bg = "black")
+  par(bg = NULL)
   radarchart(rbind(rep(1,length(audio_features)) , rep(0,length(audio_features)), audio_features),
              axistype=1,
              pcol=rgb(0.84,0.28,0.84,0.7) , pfcol=rgb(0.84,0.28,0.84,0.5)  , plwd=4 , 
@@ -103,17 +110,31 @@ generate_audio_features_plot <- function(danceability, energy, acousticness, liv
   )
 }
 
+#Generate violin plot of duration
+generate_duration_violin <- function(tracks_info){
+  duration = select(tracks_info, duration_ms) %>% mutate(duration_s = round(duration_ms/1000)) %>% select(duration_s)
+  violin_plot <- plot_ly(duration, y = ~duration_s, type = 'violin', box = list(visible = T),
+                         meanline = list(visible = T), points = 'all', jitter = 0.3, pointpos = -1.8) %>%
+    layout(title = 'Song Duration Distribution in Playlist',
+           yaxis = list(title = 'Duration (seconds)'))
+  return (violin_plot)
+}
+
+#Generate boxplots for loudness
+generate_boxplots <- function(tracks_info){
+  loudness = select(tracks_info, loudn)
+  box_plot_loud <- plot_ly(loudness, y = ~loudn, type = 'box', boxpoints = FALSE) %>%
+    layout(title = 'Loudness Distribution in Playlist\n(negative values mean that loudness is below reference level)',
+           yaxis = list(title = 'Loudness (dB)'))
+  return (box_plot_loud)
+}
+
 #Generate genre piechart
 generate_genre_pie_chart <- function(tracks_info){
   genres_info = tracks_info %>% select(genre) %>% group_by(genre) %>% summarise(nr_of_occ = n())
   genres_info = arrange(genres_info, nr_of_occ)
   genres_info = top_n(genres_info, 5)
-  
-  print(genres_info)
-  
-  #ggplot(tail(genres_info,5), aes(x="", y=nr_of_occ, fill=genre)) +
-   # geom_bar(stat="identity", width=1) +
-    #coord_polar("y", start=0)
+
   pie_chart = plot_ly(labels = genres_info$genre, values = genres_info$nr_of_occ, type = "pie")
   return(pie_chart)
 }
@@ -144,6 +165,8 @@ server <- function(input, output) {
   artist_info = data.frame()
   # Displaying playlist info in the form of DTable
   observeEvent(input$submit_playlist, {
+    print(input$playlist_id)
+    pl_info = get_playlist(input$playlist_id)
     tracks_info <<- get_tracks_info_from_playlist(get_playlist_tracks(playlist_id = input$playlist_id))
     output$genre_selection <- renderUI({
       selectInput("genre_selection", "Select genre", c("All genres", unique(tracks_info$genre)), selected = "All genres")
@@ -155,6 +178,21 @@ server <- function(input, output) {
                                                                                  mean(as.numeric(tracks_info$acousticness)), 
                                                                                  mean(as.numeric(tracks_info$liveness)), 
                                                                                  mean(as.numeric(tracks_info$valence))), height = 300, width = 300)
+    output$duration_violin = renderPlotly(generate_duration_violin(tracks_info))
+    output$box = renderPlotly(generate_boxplots(tracks_info))
+    output$descr = renderText(paste('<h4 style="font-weight: bold; display: inline;">Description: </h4>',
+                     '<h4 style="font-weight: normal;display: inline;">', pl_info$description, '</h4>'))
+    output$nr_of_songs = renderText(paste('<h4 style="font-weight: bold; display: inline;">Number of songs: </h4>',
+                                          '<h4 style="font-weight: normal;display: inline;">', pl_info$tracks$total, '</h4>'))
+    output$author_of_pl = renderText(paste('<h4 style="font-weight: bold; display: inline;">Author of playlist: </h4>',
+                                           '<h4 style="font-weight: normal;display: inline;">', pl_info$owner$display_name, '</h4>'))
+    if (pl_info$public == TRUE){
+      type = "Public"
+    }else{
+      type = "Private"
+    }
+    output$type_of_pl = renderText(paste('<h4 style="font-weight: bold; display: inline;">Type of playlist: </h4>',
+                     '<h4 style="font-weight: normal;display: inline;">', type, '</h4>'))
   })
   
   # Change displayed tracks by genre
@@ -180,7 +218,6 @@ server <- function(input, output) {
     output$audio_features_plot = renderPlot({generate_audio_features_plot(selected_track$danceability, selected_track$energy, selected_track$acousticness, selected_track$liveness, selected_track$valence)}, height = 300, width = 300)
     
     output$track_preview = renderText(paste0('<audio src="', selected_track$preview_url,'"controls> </audio>'))
-    
     #TODO: write code so it can display this info
     ###output$release_date = renderText(paste('<h4 style="font-weight: bold">',selected_track$,"</h4>"))
     
