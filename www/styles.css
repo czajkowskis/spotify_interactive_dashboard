@@ -1,0 +1,120 @@
+.custom-text-input input {
+  background-color: #eee; /* Adjust background color */
+  border: 1px solid #ccc; /* Default border */
+  border-radius: 20px; /* Rounded corners */
+  padding: 10px 20px; /* Adjust padding */
+  font-size: 16px; /* Adjust font size */
+  color: #333; /* Adjust text color */
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  transition: all 0.3s ease-in-out; /* Smooth transitions */
+}
+
+.custom-text-input input:hover {
+  /* Style changes on focus for interactivity */
+  outline: none; /* Remove default outline */
+  border: 2px solid #1ED760; /* Add a colored border on focus */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Enhance shadow on focus */
+}
+
+
+.custom-text-input input:focus {
+  /* Style changes on focus for interactivity */
+  outline: none; /* Remove default outline */
+  border: 2px solid #1ED760; /* Add a colored border on focus */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Enhance shadow on focus */
+}
+
+.submit-button{
+  background-color: #1ED760; /* Adjust background color */
+  color: #fff; /* Text color */
+  padding: 10px 20px; /* Adjust padding */
+  border: none; /* Remove default border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Indicate clickable element */
+  font-size: 14px; /* Adjust font size */
+  font-weight: bold; /* Bold text */
+  transition: all 0.3s ease-in-out; /* Smooth transitions */
+  margin: 10px;
+}
+
+.submit-button:hover {
+  background-color: #19B754; /* Adjust hover color */
+}
+
+
+
+.track-card {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.track-info {
+  flex: 1;
+  padding: 10px;  /* Add padding for spacing */
+}
+
+.track-plots {
+  flex: 1;
+  padding: 10px;  /* Add padding for spacing */
+}
+
+.track-card img {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.track-card h3 {
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+
+.track-card p {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+.artist-card {
+  display: flex;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+}
+
+.artist-card img {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.artist-info {
+  flex: 1;
+  padding: 15px;
+}
+
+.artist-info h2 {
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+.artist-info p {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 5px;
+}
+
+.artist-info a {
+  color: #333;
+  text-decoration: none;
+}
+
+.artist-info a:hover {
+  text-decoration: underline;
+}

@@ -1,162 +1,101 @@
-library('DT')
-library('plotly')
+library(shinydashboard)
+library(DT)
 
-playlist_page <- function(){
-  fluidPage(  
-    fluidRow(align = "center",
-            h4("Enter the playlist ID to anylse its content"),
-            textInput('playlist_id', label = "Playlist id:", value = '37i9dQZEVXbN6itCcaL3Tt'),
-            actionButton("submit_playlist", "Submit"),
+AUDIO_FEATURES <- c("Danceability", "Energy", "Acousticness", "Liveness", "Valence")
+
+ui <- dashboardPage(skin = "green",
+  dashboardHeader(title = "Spotify Analyzer"),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Anylize playlists", tabName = "playlist", icon = icon("list")),
+      menuItem("Anylize artists", tabName = "artist", icon = icon("microphone-lines")),
+      menuItem("About the dashboard", tabName = "about", icon = icon("address-card"))
+    )
+  ),
+  dashboardBody(
+    tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
     ),
-    #fluidRow(align = "center",
-    #         h4("Track list")
-    #),
-    fluidRow(
-      fluidRow(
-        column(6, align = 'left',
-          uiOutput("genre_selection")
+    tabItems(
+      # Playlist view
+      tabItem(tabName = "playlist",
+        fluidRow(align = "center",
+          textInput('playlist_id', label = "Playlist id:", value = '37i9dQZEVXbN6itCcaL3Tt') %>% tagAppendAttributes(class = 'custom-text-input'),
+          actionButton("submit_playlist", "Submit") %>% tagAppendAttributes(class = "submit-button")
+        ),
+        fluidRow(
+          box(
+            title = "Playlist Analysis",
+            h3("Genre Distribution"),
+            plotlyOutput("genre_distribution_plot"),
+            h3("Average Audio Features"),
+            checkboxGroupInput("average_chosen_features", label = NULL,
+                               choices = AUDIO_FEATURES,
+                               selected = AUDIO_FEATURES,
+                               inline = TRUE),
+            plotOutput("average_audio_features_plot"),
+          ),
+          box(
+            title = "Track list",
+            uiOutput("genre_selection"),
+            DT::DTOutput("table_playlist"),
+          ),
+          div(
+            class = "track-card",
+            div(
+              class = "track-info",
+              htmlOutput("track_img"),
+              htmlOutput("track_preview"),
+              htmlOutput("author"),
+              htmlOutput("track_name"),
+              htmlOutput('album'),
+            ),
+            div(
+              class = "track-plots",
+              checkboxGroupInput("track_chosen_features", label = NULL,
+                                 choices = AUDIO_FEATURES,
+                                 selected = AUDIO_FEATURES,
+                                 inline = TRUE),
+              plotOutput("track_audio_features_plot"),
+            )
+          )
         )
       ),
-      fluidRow(
-        column(6, align = "left",
-               DT::DTOutput("table_playlist")
-        ),
-        column(6, align = "left",
-               fluidRow(
-                 column(6,
-                        h3("Track details"),
-                        htmlOutput("track_img"),
-                        htmlOutput("track_preview"),
-                        htmlOutput("author"),
-                        htmlOutput("track_name"),
-                        htmlOutput('album'),
-                        htmlOutput('length'),
-                 ),
-                 column(6,
-                        h3("Song parameters"),
-                        plotOutput("audio_features_plot", height = "300px"),
-                        htmlOutput('a'),
-                        htmlOutput('d'),
-                        htmlOutput('e'),
-                        htmlOutput('l'),
-                        htmlOutput('v')
-                 )
-               )
+      tabItem(tabName = "artist",
+              fluidRow(align = "center",
+                       textInput('artist_id', label = "Artist id:", value = '7CJgLPEqiIRuneZSolpawQ?') %>% tagAppendAttributes(class = 'custom-text-input'),
+                       actionButton("submit_artist", "Submit") %>% tagAppendAttributes(class = "submit-button")
+              ),
+              fluidRow(
+                box(
+                  title = "Artist Information",
+                  div(
+                    class = "artist-card",
+                    div(
+                      class = "artist-info",
+                      htmlOutput("artist_name"),
+                      htmlOutput("artist_img"),
+                    )
+
+                  )
+                ),
+                box(
+                  title = "Tracks Analysis",
+                  selectInput("track_analysis_x_axis", "Select x-axis feature:", AUDIO_FEATURES, selected = "Valence"),
+                  selectInput("track_analysis_y_axis", "Select y-axis feature:", AUDIO_FEATURES, selected = "Energy"),
+                  plotlyOutput("tracks_scatter_plot")
+                ),
+              fluidRow(
+                box(
+                  title = "Album Comparison",
+                  uiOutput("album_comparison_first"),
+                  uiOutput("album_comparison_second"),
+                  uiOutput("album_comparison_feature"),
+                  plotOutput("album_comparison_plot")
+                )
               )
+        )
       )
-      ),
-    
-    fluidRow(
-      column(6,
-             ),
-      column(4,
-             #plotOutput("track_popularity_vs_average_plot"),
-      ),
-      
-    ),
-    fluidRow(align = "center",
-             h2("Playlist statistics")
-    ),
-    fluidRow(align = "left",
-             column(2, 
-                    h3("Playlist info"),
-                    htmlOutput("pl_name"),
-                    htmlOutput("nr_of_songs"),
-                    htmlOutput("descr"),
-                    htmlOutput("pl_folls"),
-                    htmlOutput("author_of_pl"),
-                    htmlOutput("type_of_pl"),
-                    htmlOutput("col_status")
-             ),
-             column(4,
-                    plotOutput("average_audio_features_plot")
-                    ),
-             column(6,
-                    plotlyOutput("genre_pie_chart")
-             )
-    ),
-  fluidRow(align = "center",
-           column(6,
-                  plotlyOutput("duration_violin")
-           ),
-           column(6, 
-                  plotlyOutput("box")
-                  )
-  ),
-  fluidRow(align = "center",
-           column(6,
-                  #plotOutput("average_audio_features_plot")
-                  ),
-           column(6,
-                  
-                  )
-  )
-  )
-}
-
-artist_page <- function(){
-  fluidPage(
-    fluidRow(align = "center",
-             h2("Artist analyser"),
-             textInput('artist_id', label = "Artist id:", value = '1yq2JzsqbzFbJ1B7wGOXLc'),
-             textInput('artist_name', label = "Artist name:", value = 'Young Igi'),
-             
-             actionButton("submit_artist", "Submit")
-    ),
-    fluidRow(align="center",
-              htmlOutput("artist_name"),
-              htmlOutput("artist_img"),
-    ),
-    fluidRow(align = "center",
-             plotlyOutput("tracks_scatter_plot")
-    ),
-  )
-}
-
-song_page <- function(){
-  fluidPage(  
-    fluidRow(align = "center",
-             h4("Enter the song ID to anylse its content"),
-             textInput('song_id', label = "Song id:", value = '5ygDXis42ncn6kYG14lEVG'),
-             actionButton("submit_song", "Submit"),
-    ),
-    fluidRow(align = "center",
-             h4("Playlist statistics")
-    ),
-    fluidRow(align = "center",
-             column(6, 
-                    plotOutput("genre_pie_chart")
-             ),
-             column(6,
-                    plotOutput("average_audio_features_plot"))
-    ),
-    fluidRow(align = "center",
-             h4("Track list")
-    ),
-    uiOutput("genre_selection"),
-    DT::DTOutput("table_playlist"),
-    fluidRow(align = 'center',
-             htmlOutput("track_name"),
-             htmlOutput("track_img"),
-             htmlOutput('track_preview')
-    ),
-    fluidRow(
-      column(6,
-             plotOutput("audio_features_plot")
-      ),
-      column(4,
-             plotOutput("track_popularity_vs_average_plot"),
-             
-      ),
     )
-    
-  )
-}
-
-ui <- fluidPage(
-  tabsetPanel(
-    tabPanel("Playlist", playlist_page()),
-    tabPanel("Artist", artist_page()),
-    tabPanel("Song")
   )
 )
