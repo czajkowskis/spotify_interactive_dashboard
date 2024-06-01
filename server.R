@@ -24,6 +24,11 @@ get_artists_from_playlist <- function(playlist){
   return(artists)
 }
 
+#Generate bar chart with artists TODO
+generate_artist_bar <- function(info){
+  artists = select(info, artist)
+}
+
 #Get: Name, genre, icon, audio, popularity, danceability, energy, acousticness, 
 #liveness, valence, tempo, duration_ms
 get_tracks_info_from_playlist <- function(playlist){
@@ -124,7 +129,7 @@ generate_duration_violin <- function(tracks_info){
 generate_boxplots <- function(tracks_info){
   loudness = select(tracks_info, loudn)
   box_plot_loud <- plot_ly(loudness, y = ~loudn, type = 'box', boxpoints = FALSE) %>%
-    layout(title = 'Loudness Distribution in Playlist\n(negative values mean that loudness is below reference level)',
+    layout(title = 'Loudness Distribution in Playlist',
            yaxis = list(title = 'Loudness (dB)'))
   return (box_plot_loud)
 }
@@ -135,7 +140,8 @@ generate_genre_pie_chart <- function(tracks_info){
   genres_info = arrange(genres_info, nr_of_occ)
   genres_info = top_n(genres_info, 5)
 
-  pie_chart = plot_ly(labels = genres_info$genre, values = genres_info$nr_of_occ, type = "pie")
+  pie_chart = plot_ly(labels = genres_info$genre, values = genres_info$nr_of_occ, type = "pie") %>%
+    layout(title = "Genre distribution on playlist")
   return(pie_chart)
 }
 
@@ -165,7 +171,6 @@ server <- function(input, output) {
   artist_info = data.frame()
   # Displaying playlist info in the form of DTable
   observeEvent(input$submit_playlist, {
-    print(input$playlist_id)
     pl_info = get_playlist(input$playlist_id)
     tracks_info <<- get_tracks_info_from_playlist(get_playlist_tracks(playlist_id = input$playlist_id))
     output$genre_selection <- renderUI({
@@ -177,15 +182,23 @@ server <- function(input, output) {
                                                                                  mean(as.numeric(tracks_info$energy)), 
                                                                                  mean(as.numeric(tracks_info$acousticness)), 
                                                                                  mean(as.numeric(tracks_info$liveness)), 
-                                                                                 mean(as.numeric(tracks_info$valence))), height = 300, width = 300)
+                                                                                 mean(as.numeric(tracks_info$valence))))
     output$duration_violin = renderPlotly(generate_duration_violin(tracks_info))
     output$box = renderPlotly(generate_boxplots(tracks_info))
+    
+    output$pl_name = renderText(paste('<h4 style="font-weight: bold; display: inline;">Name: </h4>',
+                                      '<h4 style="font-weight: normal;display: inline;">', pl_info$name, '</h4>'))
     output$descr = renderText(paste('<h4 style="font-weight: bold; display: inline;">Description: </h4>',
                      '<h4 style="font-weight: normal;display: inline;">', pl_info$description, '</h4>'))
     output$nr_of_songs = renderText(paste('<h4 style="font-weight: bold; display: inline;">Number of songs: </h4>',
                                           '<h4 style="font-weight: normal;display: inline;">', pl_info$tracks$total, '</h4>'))
     output$author_of_pl = renderText(paste('<h4 style="font-weight: bold; display: inline;">Author of playlist: </h4>',
                                            '<h4 style="font-weight: normal;display: inline;">', pl_info$owner$display_name, '</h4>'))
+    #output$author_img = renderText({c('<img src="', NULL,'" style="width: 300px; height: 300px;"/>')})
+    output$col_status = renderText(paste('<h4 style="font-weight: bold; display: inline;">Collaborative status: </h4>',
+                                         '<h4 style="font-weight: normal;display: inline;">', pl_info$collaborative, '</h4>'))
+    output$pl_folls = renderText(paste('<h4 style="font-weight: bold; display: inline;">Number of followers: </h4>',
+                                       '<h4 style="font-weight: normal;display: inline;">', pl_info$followers$total, '</h4>'))
     if (pl_info$public == TRUE){
       type = "Public"
     }else{
@@ -218,9 +231,6 @@ server <- function(input, output) {
     output$audio_features_plot = renderPlot({generate_audio_features_plot(selected_track$danceability, selected_track$energy, selected_track$acousticness, selected_track$liveness, selected_track$valence)}, height = 300, width = 300)
     
     output$track_preview = renderText(paste0('<audio src="', selected_track$preview_url,'"controls> </audio>'))
-    #TODO: write code so it can display this info
-    ###output$release_date = renderText(paste('<h4 style="font-weight: bold">',selected_track$,"</h4>"))
-    
     ID_of_song = selected_track$track_id
     output$ID_of_song = renderText(paste('<h4 style="font-weight: bold">',ID_of_song,"</h4>"))
     
@@ -320,12 +330,12 @@ server <- function(input, output) {
   
   observeEvent(input$submit_artist,{
     artist_info <<- get_artist_information(input$artist_id)
-    print(input$artist_id)
-    print(input$artist_name)
+    #print(input$artist_id)
+    #print(input$artist_name)
     audio_features = get_artist_audio_features(as.character(input$artist_name))
     output$artist_name = renderText({c('<h3 style="font-weight: bold">', artist_info$name, '</h3>')})
     output$artist_img = renderText({c('<img src="',artist_info$img_url,'" style="width: 300px; height: 300px;"/>')})
-    print(audio_features)
+    #print(audio_features)
     output$tracks_scatter_plot = renderPlotly(generate_audio_scatter_plot(audio_features, "valence", "energy"))
   })
   

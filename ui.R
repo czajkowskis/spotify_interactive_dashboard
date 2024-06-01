@@ -55,26 +55,41 @@ playlist_page <- function(){
       
     ),
     fluidRow(align = "center",
-             h4("Playlist statistics")
+             h2("Playlist statistics")
     ),
-    fluidRow(align = "center",
-             column(4, 
-                    plotlyOutput("genre_pie_chart", height = "300px"),
-                    plotlyOutput("box", height = "300px")
+    fluidRow(align = "left",
+             column(2, 
+                    h3("Playlist info"),
+                    htmlOutput("pl_name"),
+                    htmlOutput("nr_of_songs"),
+                    htmlOutput("descr"),
+                    htmlOutput("pl_folls"),
+                    htmlOutput("author_of_pl"),
+                    htmlOutput("type_of_pl"),
+                    htmlOutput("col_status")
              ),
              column(4,
-                    plotOutput("average_audio_features_plot", height = "300px")
-             ),
-             column(4,
-                    plotlyOutput("duration_violin", height = "300px")
-                    )
-             
+                    plotOutput("average_audio_features_plot")
+                    ),
+             column(6,
+                    plotlyOutput("genre_pie_chart")
+             )
     ),
-  fluidRow(align = "left",
-           htmlOutput("descr"),
-           htmlOutput("nr_of_songs"),
-           htmlOutput("author_of_pl"),
-           htmlOutput("type_of_pl")
+  fluidRow(align = "center",
+           column(6,
+                  plotlyOutput("duration_violin")
+           ),
+           column(6, 
+                  plotlyOutput("box")
+                  )
+  ),
+  fluidRow(align = "center",
+           column(6,
+                  #plotOutput("average_audio_features_plot")
+                  ),
+           column(6,
+                  
+                  )
   )
   )
 }
