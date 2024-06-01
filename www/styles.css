@@ -83,8 +83,7 @@
 .artist-card {
   display: flex;
   background-color: white;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  justify-content: space-between;
   margin-bottom: 15px;
 }
 
@@ -99,22 +98,8 @@
   padding: 15px;
 }
 
-.artist-info h2 {
-  font-size: 20px;
-  margin-bottom: 5px;
+.value-boxes {
+  flex: 1;
+  padding: 15px;
 }
 
-.artist-info p {
-  font-size: 14px;
-  color: #999;
-  margin-bottom: 5px;
-}
-
-.artist-info a {
-  color: #333;
-  text-decoration: none;
-}
-
-.artist-info a:hover {
-  text-decoration: underline;
-}
