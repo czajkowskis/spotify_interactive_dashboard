@@ -5,32 +5,14 @@ library('spotifyr')
 library('fmsb')
 library('ggplot2')
 library('plotly')
+library('tools')
+library(ggjoy)
 
-dance_avg = 0
-energy_avg = 0
-valence_avg = 0
-liveness_avg = 0
-acousticness_avg = 0
+AUDIO_FEATURES <- c("Danceability", "Energy", "Acousticness", "Liveness", "Valence")
 
-#get artist names whose tracks are on playlist
-get_artists_from_playlist <- function(playlist){
-  artists = data.frame(name=character(0))
-  print("Getting playlist info")
-  for(artist_list in playlist$track.artists){
-    for(artist_name in artist_list$name){
-      artists <- add_row(artists, name = artist_name)
-    }
-  }
-  return(artists)
-}
+my_palette <- c("#fd7f6f", "#7eb0d5", "#b2e061", "#bd7ebe", "#ffb55a", "#ffee65", "#beb9db", "#fdcce5", "#8bd3c7")
 
-#Generate bar chart with artists TODO
-generate_artist_bar <- function(info){
-  artists = select(info, artist)
-}
-
-#Get: Name, genre, icon, audio, popularity, danceability, energy, acousticness, 
-#liveness, valence, tempo, duration_ms
+# Geting information from the Spotify API
 get_tracks_info_from_playlist <- function(playlist){
   img_urls = c()
   for(img_urls_list in playlist$track.album.images){
@@ -48,7 +30,7 @@ get_tracks_info_from_playlist <- function(playlist){
   inst = c()
   loudness = c()
   speech = c()
-
+  
   for(track_id in playlist$track.id){
     tracks_ids = c(tracks_ids, track_id)
     audio_features <- get_track_audio_features(track_id)
@@ -64,7 +46,7 @@ get_tracks_info_from_playlist <- function(playlist){
   }
   
   genres = c()
-
+  
   for(artists in playlist$track.artists){
     artist_id = artists$id[1]
     artist = get_artist(artist_id)
@@ -72,10 +54,23 @@ get_tracks_info_from_playlist <- function(playlist){
       genres = c(genres, "Not specified")
     }
     else{
-      genres = c(genres, artist$genres[[1]])
+      genres = c(genres, toTitleCase(artist$genres[[1]]))
     }
   }
   
+  artists_comma_separated = c()
+  for(artists in playlist$track.artists){
+    current_artists_record = ""
+    for(artist_name in artists$name){
+      if (current_artists_record == ""){
+        current_artists_record = artist_name
+      }else{
+        current_artists_record = paste(current_artists_record, artist_name, sep = ", ")
+      }
+    }
+    artists_comma_separated = c(artists_comma_separated, current_artists_record)
+  }
+
   dance_avg <<- round(mean(danceability), 2)
   energy_avg <<- round(mean(energy), 2)
   valence_avg <<- round(mean(valence), 2)
@@ -84,6 +79,7 @@ get_tracks_info_from_playlist <- function(playlist){
   
   tracks_info = data.frame(Name = playlist$track.name,
                            Album_name = playlist$track.album.name, 
+                           artists = artists_comma_separated,
                            genre = genres, 
                            img_url = img_urls, 
                            preview_url = playlist$track.preview_url, 
@@ -100,120 +96,254 @@ get_tracks_info_from_playlist <- function(playlist){
   return(tracks_info)
 }
 
-#Generate fancy radar plot
-generate_audio_features_plot <- function(danceability, energy, acousticness, liveness, valence){
-  audio_features = data.frame(Danceability = danceability, 
-                              Energy = energy, 
-                              Acousticness = acousticness, 
-                              Liveness = liveness, 
-                              Valence = valence)
-  par(bg = NULL)
-  radarchart(rbind(rep(1,length(audio_features)) , rep(0,length(audio_features)), audio_features),
-             axistype=1,
-             pcol=rgb(0.84,0.28,0.84,0.7) , pfcol=rgb(0.84,0.28,0.84,0.5)  , plwd=4 , 
-             cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0,0.2,5), cglwd=0.8
-  )
-}
 
-#Generate violin plot of duration
-generate_duration_violin <- function(tracks_info){
-  duration = select(tracks_info, duration_ms) %>% mutate(duration_s = round(duration_ms/1000)) %>% select(duration_s)
-  violin_plot <- plot_ly(duration, y = ~duration_s, type = 'violin', box = list(visible = T),
-                         meanline = list(visible = T), points = 'all', jitter = 0.3, pointpos = -1.8) %>%
-    layout(title = 'Song Duration Distribution in Playlist',
-           yaxis = list(title = 'Duration (seconds)'))
-  return (violin_plot)
-}
-
-#Generate boxplots for loudness
-generate_boxplots <- function(tracks_info){
-  loudness = select(tracks_info, loudn)
-  box_plot_loud <- plot_ly(loudness, y = ~loudn, type = 'box', boxpoints = FALSE) %>%
-    layout(title = 'Loudness Distribution in Playlist',
-           yaxis = list(title = 'Loudness (dB)'))
-  return (box_plot_loud)
-}
-
-#Generate genre piechart
-generate_genre_pie_chart <- function(tracks_info){
-  genres_info = tracks_info %>% select(genre) %>% group_by(genre) %>% summarise(nr_of_occ = n())
-  genres_info = arrange(genres_info, nr_of_occ)
-  genres_info = top_n(genres_info, 5)
-
-  pie_chart = plot_ly(labels = genres_info$genre, values = genres_info$nr_of_occ, type = "pie") %>%
-    layout(title = "Genre distribution on playlist")
-  return(pie_chart)
-}
-
-#Get information of an artist based on his/her ID
+# Get information of an artist based on his/her ID
 get_artist_information <- function(artist_id){
   artist = get_artist(artist_id)
   artist_info = data.frame(name = artist$name, 
+                           id = artist$id,
                            followers = artist$followers$total, 
                            popularity = artist$popularity, 
                            img_url = artist$images$url[1])
   return(artist_info)
 }
 
-#Generate scatter plot (second card)
-generate_audio_scatter_plot <- function(audio_features, x_axis_feature, y_axis_feature){
-  plot_ly(data = audio_features, 
-          type = "scatter", 
-          mode = "markers", 
-          x = ~valence, 
-          y = ~energy, 
-          color = ~album_name,
-          text = ~track_name)
+# PLOTS
+
+generate_genre_distribution_chart <- function(tracks_info){
+  genres_info = tracks_info %>% select(genre) %>% group_by(genre) %>% summarise(nr_of_occ = n())
+  genres_info = arrange(genres_info, nr_of_occ)
+  top_5_genres = top_n(genres_info, 5)
+  
+  plot_data = add_row(top_5_genres, genre = "Other", nr_of_occ = nrow(genres_info %>% filter(!genre %in% top_5_genres)))
+  
+  plot_ly(labels = plot_data$genre, values = plot_data$nr_of_occ, marker = list(colors = my_palette), type = "pie")
 }
 
+generate_average_audio_features_plot <- function(danceability, energy, acousticness, liveness, valence, chosen_features){
+  audio_features = data.frame(Danceability = danceability, 
+                              Energy = energy, 
+                              Acousticness = acousticness, 
+                              Liveness = liveness, 
+                              Valence = valence)
+  par(bg = NULL)
+
+  filtered_df = audio_features %>% select(chosen_features)
+  radarchart(rbind(rep(1, length(filtered_df)), rep(0, length(filtered_df)), filtered_df),
+             axistype=1,
+             pcol=rgb(0.84,0.28,0.84,0.7) , pfcol=rgb(0.84,0.28,0.84,0.5)  , plwd=4 , 
+             cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0,0.2,5), cglwd=0.8
+  )
+}
+
+generate_track_audio_features_plot <- function(danceability, energy, acousticness, liveness, valence, chosen_features){
+  audio_features = data.frame(Danceability = danceability, 
+                              Energy = energy, 
+                              Acousticness = acousticness, 
+                              Liveness = liveness, 
+                              Valence = valence)
+  par(bg = NULL)
+  filtered_df = audio_features %>% select(chosen_features)
+  radarchart(rbind(rep(1, length(filtered_df)), rep(0, length(filtered_df)), filtered_df),
+             axistype=1,
+             pcol=rgb(0.84,0.28,0.84,0.7) , pfcol=rgb(0.84,0.28,0.84,0.5)  , plwd=4 , 
+             cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0,0.2,5), cglwd=0.8
+  )
+}
+
+
+generate_tracks_scatter_plot <- function(audio_features, x_axis_feature, y_axis_feature){
+  plot <- plot_ly(data = audio_features, 
+                  type = "scatter", 
+                  mode = "markers", 
+                  x = audio_features[[tolower(x_axis_feature())]], y = audio_features[[tolower(y_axis_feature())]],  # Change to dynamic input
+                  color = ~album_name,
+                  text = paste("<b>Track Title:</b>", audio_features[["track_name"]], "\n<b>Album:</b>", audio_features[["album_name"]], "\n<b>", 
+                               x_axis_feature(), ":</b>", audio_features[[tolower(x_axis_feature())]], "\n<b>", y_axis_feature(),":</b>", audio_features[[tolower(y_axis_feature())]]),
+                  hoverinfo = 'text')
+  plot %>% layout(
+    xaxis = list(title = x_axis_feature()),  # Use labels from the map
+    yaxis = list(title = y_axis_feature())  # Use labels from the map
+  )
+}
+
+generate_ridgeline_album_comparison_plot <- function(data, chosen_feature){
+  ggplot(data, aes(x = data[[tolower(chosen_feature())]], y = album_name, fill = as.factor(album_name))) + 
+    geom_joy() + 
+    theme_joy() +
+    xlim(0, 1) +
+    scale_fill_manual(values = c("#1ED760", "#B9A5E2")) + 
+    labs(x = chosen_feature(), y = "Album names", fill = "Album name")
+}
+
+# Generate UI only after submition
+
+generate_playlist_page_UI <- function(){
+  renderUI({
+    fluidRow(
+      box(
+        width = 5,
+        title = "Playlist Analysis",
+        h3("Genre Distribution"),
+        plotlyOutput("genre_distribution_plot"),
+        h3("Average Audio Features"),
+        checkboxGroupInput("average_chosen_features", label = NULL,
+                           choices = AUDIO_FEATURES,
+                           selected = AUDIO_FEATURES,
+                           inline = TRUE),
+        plotOutput("average_audio_features_plot"),
+      ),
+      box(
+        width = 7,
+        title = "Track list",
+        uiOutput("genre_selection"),
+        DT::DTOutput("table_playlist"),
+      ),
+      uiOutput("track_card_UI"),
+    )
+  })
+}
+
+generate_track_card <- function(){
+  renderUI({box(
+    width = 7,
+    class = "track-card",
+    div(
+      class = "track-info",
+      htmlOutput("track_name"),
+      htmlOutput("track_artists"),
+      htmlOutput("track_img"),
+      htmlOutput("track_preview"),
+      htmlOutput("author"),
+      htmlOutput('album'),
+    ),
+    div(
+      class = "track-plots",
+      checkboxGroupInput("track_chosen_features", label = NULL,
+                         choices = AUDIO_FEATURES,
+                         selected = AUDIO_FEATURES,
+                         inline = TRUE),
+      plotOutput("track_audio_features_plot"),
+    )
+  )})
+}
+
+generate_artsit_page_UI <- function(){
+  renderUI({
+           fluidRow(
+             box(
+               width = 5,
+               # title = "Artist Information",
+               div(
+                 class = "artist-card",
+                 column(
+                   width = 6,
+                   class = "artist-info",
+                   htmlOutput("artist_name"),
+                   htmlOutput("artist_img"),
+                 ),
+                 column(
+                   width = 6,
+                   class = "value-boxes",
+                   fluidRow(
+                     valueBoxOutput("popularity_box", width = 12) %>% tagAppendAttributes(class = "custom-value-box"),
+                   ),
+                   fluidRow(
+                     valueBoxOutput("total_albums_box", width = 12) %>% tagAppendAttributes(class = "custom-value-box"),
+                   ),
+                   fluidRow(
+                     valueBoxOutput("total_tracks_box", width = 12) %>% tagAppendAttributes(class = "custom-value-box")
+                   )
+                 )
+                 
+               )
+             ),
+             box(
+               width = 7,
+               title = "Tracks Analysis",
+               fluidRow(
+                 column(
+                   width = 6,
+                   selectInput("track_analysis_x_axis", "Select x-axis feature:", AUDIO_FEATURES, selected = "Valence"),
+                 ),
+                 column(
+                   width = 6,
+                   selectInput("track_analysis_y_axis", "Select y-axis feature:", AUDIO_FEATURES, selected = "Energy"),
+                 ),
+               ),
+               plotlyOutput("tracks_scatter_plot")
+             ),
+             fluidRow(
+               box(
+                 width = 12,
+                 title = "Album Comparison",
+                 fluidRow(
+                   column(
+                     width = 6,
+                     uiOutput("album_comparison_first"),
+                   ),
+                   column(
+                     width = 6,
+                     uiOutput("album_comparison_second"),
+                   ),
+                 ),
+                 uiOutput("album_comparison_feature"),
+                 plotOutput("album_comparison_plot")
+               )
+             )
+           )})
+}
+
+
 server <- function(input, output) {
+  
+  # Defining global data frames
   tracks_info = data.frame()
-  artist_info = data.frame()
+  artist_audio_features = data.frame()
+  
+  # Selecting features to be displayed on radar plot
+  average_chosen_features <- reactive(input$average_chosen_features)
+  track_chosen_features <- reactive(input$track_chosen_features)
+  
+  # Selecting x and y axis for track analysis plot
+  selected_x_feature <- reactive({ return(input$track_analysis_x_axis)})
+  selected_y_feature <- reactive({return(input$track_analysis_y_axis)})
+  
+  
+  # Selecting feature for album comparison
+  
+  album_comparison_feature <- reactive({return(input$album_comparison_feature)})
+  
   # Displaying playlist info in the form of DTable
   observeEvent(input$submit_playlist, {
     pl_info = get_playlist(input$playlist_id)
     tracks_info <<- get_tracks_info_from_playlist(get_playlist_tracks(playlist_id = input$playlist_id))
+    output$playlist_page <- generate_playlist_page_UI()
     output$genre_selection <- renderUI({
       selectInput("genre_selection", "Select genre", c("All genres", unique(tracks_info$genre)), selected = "All genres")
     })
-    output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name", "genre")], rownames = FALSE, selection = 'single')    
-    output$genre_pie_chart = renderPlotly(generate_genre_pie_chart(tracks_info))
-    output$average_audio_features_plot = renderPlot(generate_audio_features_plot(mean(as.numeric(tracks_info$danceability)), 
+    
+    # Playlist box
+    output$genre_distribution_plot = renderPlotly(generate_genre_distribution_chart(tracks_info))
+    output$average_audio_features_plot = renderPlot(generate_average_audio_features_plot(mean(as.numeric(tracks_info$danceability)), 
                                                                                  mean(as.numeric(tracks_info$energy)), 
                                                                                  mean(as.numeric(tracks_info$acousticness)), 
                                                                                  mean(as.numeric(tracks_info$liveness)), 
-                                                                                 mean(as.numeric(tracks_info$valence))))
-    output$duration_violin = renderPlotly(generate_duration_violin(tracks_info))
-    output$box = renderPlotly(generate_boxplots(tracks_info))
-    
-    output$pl_name = renderText(paste('<h4 style="font-weight: bold; display: inline;">Name: </h4>',
-                                      '<h4 style="font-weight: normal;display: inline;">', pl_info$name, '</h4>'))
-    output$descr = renderText(paste('<h4 style="font-weight: bold; display: inline;">Description: </h4>',
-                     '<h4 style="font-weight: normal;display: inline;">', pl_info$description, '</h4>'))
-    output$nr_of_songs = renderText(paste('<h4 style="font-weight: bold; display: inline;">Number of songs: </h4>',
-                                          '<h4 style="font-weight: normal;display: inline;">', pl_info$tracks$total, '</h4>'))
-    output$author_of_pl = renderText(paste('<h4 style="font-weight: bold; display: inline;">Author of playlist: </h4>',
-                                           '<h4 style="font-weight: normal;display: inline;">', pl_info$owner$display_name, '</h4>'))
-    #output$author_img = renderText({c('<img src="', NULL,'" style="width: 300px; height: 300px;"/>')})
-    output$col_status = renderText(paste('<h4 style="font-weight: bold; display: inline;">Collaborative status: </h4>',
-                                         '<h4 style="font-weight: normal;display: inline;">', pl_info$collaborative, '</h4>'))
-    output$pl_folls = renderText(paste('<h4 style="font-weight: bold; display: inline;">Number of followers: </h4>',
-                                       '<h4 style="font-weight: normal;display: inline;">', pl_info$followers$total, '</h4>'))
-    if (pl_info$public == TRUE){
-      type = "Public"
-    }else{
-      type = "Private"
-    }
-    output$type_of_pl = renderText(paste('<h4 style="font-weight: bold; display: inline;">Type of playlist: </h4>',
-                     '<h4 style="font-weight: normal;display: inline;">', type, '</h4>'))
+                                                                                 mean(as.numeric(tracks_info$valence)),
+                                                                                average_chosen_features()))
+    # Track-list box
+    output$genre_selection <- renderUI({
+      selectInput("genre_selection", "Select genre", c("All genres", unique(tracks_info$genre)), selected = "All genres")
+    })
+    output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name", "artists", "genre")], colnames = c("Track Title", "Album Title", "Artists", "Genre"), rownames = FALSE, selection = 'single')
   })
   
   # Change displayed tracks by genre
   observeEvent(input$genre_selection,{
     if(input$genre_selection == "All genres"){
-      output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name", "genre")], rownames = FALSE, selection = 'single')
+      output$table_playlist = DT::renderDT(tracks_info[,c("Name","Album_name", "artists", "genre")], colnames = c("Track Title", "Album Title", "Artists", "Genre"), rownames = FALSE, selection = 'single')
     } else{
-      output$table_playlist = DT::renderDT(tracks_info %>% dplyr::filter(genre == input$genre_selection) %>% select("Name", "Album_name", "genre"),  rownames = FALSE, selection = 'single')
+      output$table_playlist = DT::renderDT(tracks_info %>% dplyr::filter(genre == input$genre_selection) %>% select("Name", "Album_name", "artists", "genre"), colnames = c("Track Title", "Album Title", "Artists", "Genre"),  rownames = FALSE, selection = 'single')
     }
   })
   
@@ -225,123 +355,50 @@ server <- function(input, output) {
       filtered_tracks <- tracks_info %>% dplyr::filter(genre == input$genre_selection)
       selected_track <- filtered_tracks[input$table_playlist_rows_selected, ]
     }
-    output$track_name = renderText(paste('<h4 style="font-weight: bold; display: inline;">Title: </h4>',
-                                    '<h4 style="font-weight: normal;display: inline;">', selected_track$Name, '</h4>'))
+    output$track_card_UI <- generate_track_card()
+    output$track_name = renderText({c('<h3 style="font-weight: bold">', selected_track$Name, '</h3>')})
+    output$track_artists = renderText({c('<h4>', selected_track$artists, '</h>')})
     output$track_img = renderText({c('<img src="', selected_track$img_url,'" style="width: 300px; height: 300px;"/>')})
-    output$audio_features_plot = renderPlot({generate_audio_features_plot(selected_track$danceability, selected_track$energy, selected_track$acousticness, selected_track$liveness, selected_track$valence)}, height = 300, width = 300)
-    
-    output$track_preview = renderText(paste0('<audio src="', selected_track$preview_url,'"controls> </audio>'))
-    ID_of_song = selected_track$track_id
-    output$ID_of_song = renderText(paste('<h4 style="font-weight: bold">',ID_of_song,"</h4>"))
-    
-    track_info = get_track(ID_of_song)
-    artist_curr = ""
-    for(art in track_info$artists$name){
-      if (artist_curr == ""){
-        artist_curr = art
-      }else{
-        artist_curr = paste(artist_curr, art, sep = ", ")
-      }
-    }
-
-    output$author = renderText(paste('<h4 style="font-weight: bold; display: inline;">Artist: </h4>',
-                                    '<h4 style="font-weight: normal;display: inline;">', artist_curr, '</h4>'))
-    
-    output$album = renderText(paste('<h4 style="font-weight: bold; display: inline;">Album: </h4>',
-                                    '<h4 style="font-weight: normal;display: inline;">', selected_track$Album_name, '</h4>'))
-    duration_s = round(selected_track$duration/1000, 0)
-    mins = round(duration_s/60, 0)
-    secs = duration_s %% 60
-    output$length = renderText(paste('<h4 style="font-weight: bold; display: inline;">Duration: </h4>',
-                                    '<h4 style="font-weight: normal;display: inline;">', paste(mins, " min ", secs, " s", sep = ""), '</h4>'))
-    
-    #output$playlist_img = renderText({c('<img src="', get_playlist_cover_image(input$playlist_id)[1],'" style="width: 300px; height: 300px;"/>')})
-
-    #Comparison of danceability
-    if(selected_track$danceability >= dance_avg + 0.1){
-      output$d = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Danceability: </h4>',
-                                  '<h4 style="font-weight: bold; display: inline; color: lime">Above average</h4>'))
-    }else{
-      if(selected_track$danceability <= dance_avg - 0.1){
-        output$d = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Danceability: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: red">Below average</h4>'))
-      }else{
-        output$d = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Danceability: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: grey">Average</h4>'))
-      }
-    }
-    
-    #comparison of Energy
-    if(selected_track$energy >= energy_avg + 0.1){
-      output$e = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Energy: </h4>',
-                                  '<h4 style="font-weight: bold; display: inline; color: lime">Above average</h4>'))
-    }else{
-      if(selected_track$energy <= energy_avg - 0.1){
-        output$e = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Energy: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: red">Below average</h4>'))
-      }else{
-        output$e = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Energy: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: grey">Average</h4>'))
-      }
-    }
-    
-    #Comparison of Valence
-    if(selected_track$valence >= valence_avg + 0.1){
-      output$v = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Valence: </h4>',
-                                  '<h4 style="font-weight: bold; display: inline; color: lime">Above average</h4>'))
-    }else{
-      if(selected_track$valence <= valence_avg - 0.1){
-        output$v = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Valence: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: red">Below average</h4>'))
-      }else{
-        output$v = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Valence: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: grey">Average</h4>'))
-      }
-    }
-    
-    #Comparison of acousticness
-    if(selected_track$acousticness >= acousticness_avg + 0.1){
-      output$a = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Acousticness: </h4>',
-                                  '<h4 style="font-weight: bold; display: inline; color: lime">Above average</h4>'))
-    }else{
-      if(selected_track$acousticness <= acousticness_avg - 0.1){
-        output$a = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Acousticness: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: red">Below average</h4>'))
-      }else{
-        output$a = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Acousticness: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: grey">Average</h4>'))
-      }
-    }
-    
-    #Comparison of liveness
-    if(selected_track$liveness >= liveness_avg + 0.1){
-      output$l = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Liveness: </h4>',
-                                  '<h4 style="font-weight: bold; display: inline; color: lime">Above average</h4>'))
-    }else{
-      if(selected_track$liveness <= liveness_avg - 0.1){
-        output$l = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Liveness: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: red">Below average</h4>'))
-      }else{
-        output$l = renderText(paste('<h4 style="font-weight: bold; display: inline; color: black">Liveness: </h4>',
-                                    '<h4 style="font-weight: bold; display: inline; color: grey">Average</h4>'))
-      }
-    }
-    })
+    output$track_preview = renderText(paste0('<audio class = "audio-player" src="', selected_track$preview_url,'"controls> </audio>'))
+    output$track_audio_features_plot = renderPlot({generate_track_audio_features_plot(selected_track$danceability, 
+                                                                                selected_track$energy, 
+                                                                                selected_track$acousticness, 
+                                                                                selected_track$liveness, 
+                                                                                selected_track$valence,
+                                                                                track_chosen_features())})
+  })
   
+  # Generating artist page
   observeEvent(input$submit_artist,{
     artist_info <<- get_artist_information(input$artist_id)
-    #print(input$artist_id)
-    #print(input$artist_name)
-    audio_features = get_artist_audio_features(as.character(input$artist_name))
+    artist_audio_features <<- get_artist_audio_features(artist_info$id)
+    output$artist_page <- generate_artsit_page_UI()
     output$artist_name = renderText({c('<h3 style="font-weight: bold">', artist_info$name, '</h3>')})
     output$artist_img = renderText({c('<img src="',artist_info$img_url,'" style="width: 300px; height: 300px;"/>')})
-    #print(audio_features)
-    output$tracks_scatter_plot = renderPlotly(generate_audio_scatter_plot(audio_features, "valence", "energy"))
+    output$popularity_box <- renderValueBox({
+      valueBox(value = artist_info$popularity, subtitle = "Popularity", icon = icon("arrow-trend-up"), color = "green")
+    })
+    output$total_albums_box <- renderValueBox({
+      valueBox(value = length(unique(artist_audio_features$album_name)), subtitle = "Number of released albums", icon = icon("record-vinyl"), color = "purple")
+    })
+    output$total_tracks_box <- renderValueBox({
+      valueBox(value = length(unique(artist_audio_features$track_name)), subtitle = "Number of released tracks", icon = icon("itunes-note"), color = "teal")
+    })
+    output$tracks_scatter_plot = renderPlotly(generate_tracks_scatter_plot(artist_audio_features, reactive({input$track_analysis_x_axis}), reactive({input$track_analysis_y_axis})))
+    output$album_comparison_first = renderUI({
+      selectInput("first_album_comparison", "Select first album to compare:", unique(artist_audio_features$album_name))
+    })
+    output$album_comparison_second = renderUI({
+      selectInput("second_album_comparison", "Select second album to compare:", unique(artist_audio_features$album_name))
+    })
+    output$album_comparison_feature = renderUI({
+      selectInput("album_comparison_feature", "Select the feature to compare the albums on:", AUDIO_FEATURES)
+    })
+    output$album_comparison_plot = renderPlot(generate_ridgeline_album_comparison_plot(artist_audio_features %>% filter(album_name == input$first_album_comparison | album_name == input$second_album_comparison),
+                                                                                       reactive({input$album_comparison_feature})
+    ))
   })
   
 }
-
-#artist_info <- get_artist("7CJgLPEqiIRuneZSolpawQ?")
-#audio_features = get_artist_audio_features("Young Igi")
 
 

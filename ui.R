@@ -1,162 +1,86 @@
-library('DT')
-library('plotly')
+library(shinydashboard)
+library(DT)
 
-playlist_page <- function(){
-  fluidPage(  
-    fluidRow(align = "center",
-            h4("Enter the playlist ID to anylse its content"),
-            textInput('playlist_id', label = "Playlist id:", value = '37i9dQZEVXbN6itCcaL3Tt'),
-            actionButton("submit_playlist", "Submit"),
+AUDIO_FEATURES <- c("Danceability", "Energy", "Acousticness", "Liveness", "Valence")
+
+ui <- dashboardPage(skin = "green",
+  dashboardHeader(title = "Spotify Analyzer"),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Anylize playlists", tabName = "playlist", icon = icon("list")),
+      menuItem("Anylize artists", tabName = "artist", icon = icon("microphone-lines")),
+      menuItem("About the dashboard", tabName = "about", icon = icon("circle-info"))
     ),
-    #fluidRow(align = "center",
-    #         h4("Track list")
-    #),
-    fluidRow(
-      fluidRow(
-        column(6, align = 'left',
-          uiOutput("genre_selection")
-        )
-      ),
-      fluidRow(
-        column(6, align = "left",
-               DT::DTOutput("table_playlist")
-        ),
-        column(6, align = "left",
-               fluidRow(
-                 column(6,
-                        h3("Track details"),
-                        htmlOutput("track_img"),
-                        htmlOutput("track_preview"),
-                        htmlOutput("author"),
-                        htmlOutput("track_name"),
-                        htmlOutput('album'),
-                        htmlOutput('length'),
-                 ),
-                 column(6,
-                        h3("Song parameters"),
-                        plotOutput("audio_features_plot", height = "300px"),
-                        htmlOutput('a'),
-                        htmlOutput('d'),
-                        htmlOutput('e'),
-                        htmlOutput('l'),
-                        htmlOutput('v')
-                 )
-               )
-              )
+    div(
+      tags$img(
+        style = "padding: 5px; text-align: center; width: 200px;",
+        src = "logo.png"
       )
-      ),
-    
-    fluidRow(
-      column(6,
-             ),
-      column(4,
-             #plotOutput("track_popularity_vs_average_plot"),
-      ),
-      
-    ),
-    fluidRow(align = "center",
-             h2("Playlist statistics")
-    ),
-    fluidRow(align = "left",
-             column(2, 
-                    h3("Playlist info"),
-                    htmlOutput("pl_name"),
-                    htmlOutput("nr_of_songs"),
-                    htmlOutput("descr"),
-                    htmlOutput("pl_folls"),
-                    htmlOutput("author_of_pl"),
-                    htmlOutput("type_of_pl"),
-                    htmlOutput("col_status")
-             ),
-             column(4,
-                    plotOutput("average_audio_features_plot")
-                    ),
-             column(6,
-                    plotlyOutput("genre_pie_chart")
-             )
-    ),
-  fluidRow(align = "center",
-           column(6,
-                  plotlyOutput("duration_violin")
-           ),
-           column(6, 
-                  plotlyOutput("box")
-                  )
-  ),
-  fluidRow(align = "center",
-           column(6,
-                  #plotOutput("average_audio_features_plot")
-                  ),
-           column(6,
-                  
-                  )
-  )
-  )
-}
-
-artist_page <- function(){
-  fluidPage(
-    fluidRow(align = "center",
-             h2("Artist analyser"),
-             textInput('artist_id', label = "Artist id:", value = '1yq2JzsqbzFbJ1B7wGOXLc'),
-             textInput('artist_name', label = "Artist name:", value = 'Young Igi'),
-             
-             actionButton("submit_artist", "Submit")
-    ),
-    fluidRow(align="center",
-              htmlOutput("artist_name"),
-              htmlOutput("artist_img"),
-    ),
-    fluidRow(align = "center",
-             plotlyOutput("tracks_scatter_plot")
-    ),
-  )
-}
-
-song_page <- function(){
-  fluidPage(  
-    fluidRow(align = "center",
-             h4("Enter the song ID to anylse its content"),
-             textInput('song_id', label = "Song id:", value = '5ygDXis42ncn6kYG14lEVG'),
-             actionButton("submit_song", "Submit"),
-    ),
-    fluidRow(align = "center",
-             h4("Playlist statistics")
-    ),
-    fluidRow(align = "center",
-             column(6, 
-                    plotOutput("genre_pie_chart")
-             ),
-             column(6,
-                    plotOutput("average_audio_features_plot"))
-    ),
-    fluidRow(align = "center",
-             h4("Track list")
-    ),
-    uiOutput("genre_selection"),
-    DT::DTOutput("table_playlist"),
-    fluidRow(align = 'center',
-             htmlOutput("track_name"),
-             htmlOutput("track_img"),
-             htmlOutput('track_preview')
-    ),
-    fluidRow(
-      column(6,
-             plotOutput("audio_features_plot")
-      ),
-      column(4,
-             plotOutput("track_popularity_vs_average_plot"),
-             
-      ),
     )
-    
-  )
-}
-
-ui <- fluidPage(
-  tabsetPanel(
-    tabPanel("Playlist", playlist_page()),
-    tabPanel("Artist", artist_page()),
-    tabPanel("Song")
+  ),
+  dashboardBody(
+    tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
+    ),
+    tabItems(
+      # Playlist view
+      tabItem(tabName = "playlist",
+        fluidRow(align = "center",
+          textInput('playlist_id', label = "Playlist id:", value = '37i9dQZEVXbN6itCcaL3Tt') %>% tagAppendAttributes(class = 'custom-text-input'),
+          actionButton("submit_playlist", "Submit") %>% tagAppendAttributes(class = "submit-button")
+        ),
+        uiOutput("playlist_page")
+      ),
+      tabItem(tabName = "artist",
+              fluidRow(align = "center",
+                       textInput('artist_id', label = "Artist id:", value = '7CJgLPEqiIRuneZSolpawQ') %>% tagAppendAttributes(class = 'custom-text-input'),
+                       actionButton("submit_artist", "Submit") %>% tagAppendAttributes(class = "submit-button")
+              ),
+              uiOutput("artist_page"),
+      ),
+      tabItem(tabName = "about",
+        fluidRow(
+          column(
+            width = 12,
+            h1("About Spotify Analyzer Dashboard", style = "text-align: center;"),
+            p("The Spotify Analyzer Dashboard was created as part of the Data Visualization course at Poznan University of Technology.
+            It uses Spotify API to fetch data about playlists, artists and albums based on IDs and present the data in clear and interactive manner."),
+            p("The dashboard was divided into 2 parts - one regarding the playlist analysis and one regarding artist analysis."),
+            h2("Playlist Analyzer:"),
+            p("Playlist Analyzer was designed to present the data about the playlist chosen by the user. After providing the correct playlist ID the user can:"),
+            tags$ul(
+              tags$li(
+                "View the pie chart describing the distribution of track genres in the playlist."
+              ),
+              tags$li(
+                "View the interactive radar chart presenting the average audio features of all tracks in the playlist.
+              The user can choose which audio features should be included in the chart."
+              ),
+              tags$li(
+                "View the list of tracks in the playlist. After selecting the record from the table, the informative card
+              about the track including basic information and a radar chart similar to the one described above but regarding
+              only the specific track will be displayed. It is possible to listen to the song preview if it is available"
+              ),
+            ),
+            h2("Artist Analyzer:"),
+            p("Artist Analyzer presents the data about the artist chosen by the user. After providing the correct artist ID the user can:"),
+            tags$ul(
+              tags$li(
+                "View the informative card summarising artist's releases"
+              ),
+              tags$li(
+                "View the interactive scatter plot showing all the artist's regarding two selected audio features. 
+              The user can freely change both the x-axis and the y-axis features."
+              ),
+              tags$li(
+                "View the ridgeline plot comparing two chosen albums of the artist in terms of the chosen audio feature. 
+                The user can choose both of the albums and the feature on which they are to be compared."
+              ),
+            ),
+          )
+         
+        )
+      )
+    )
   )
 )
